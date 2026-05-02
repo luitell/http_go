@@ -18,7 +18,7 @@ func main() {
 	defer file.Close()
 
 	fmt.Printf("Reading data from file\n")
-	fmt.Printf("======================")
+	fmt.Printf("======================\n")
 	buffer := make([]byte, 8)
 	currentLine := ""
 
