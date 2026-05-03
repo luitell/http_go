@@ -15,34 +15,45 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not open %s: %s\n", inputFilePath, err)
 	}
-	defer file.Close()
 
 	fmt.Printf("Reading data from file\n")
 	fmt.Printf("======================\n")
-	buffer := make([]byte, 8)
-	currentLine := ""
 
-	for {
-		n, err := file.Read(buffer)
-		if err != nil {
-			if currentLine != "" {
-				fmt.Printf("read: %s\n", currentLine)
+	for i := range getLinesChannel(file) {
+		fmt.Println("read:", i)
+	}
+}
+
+func getLinesChannel(f io.ReadCloser) <-chan string {
+	lineChannel := make(chan string)
+	go func() {
+		defer f.Close()
+		defer close(lineChannel)
+		buffer := make([]byte, 8)
+		currentLine := ""
+
+		for {
+			n, err := f.Read(buffer)
+			if err != nil {
+				if currentLine != "" {
+					lineChannel <- currentLine
+					currentLine = ""
+				}
+				if err == io.EOF {
+					break
+				}
+			}
+
+			currentChunk := string(buffer[:n])
+			splitSections := strings.Split(currentChunk, "\n")
+
+			for i := 0; i < len(splitSections)-1; i++ {
+				lineChannel <- fmt.Sprintf("%s%s", currentLine, splitSections[i])
 				currentLine = ""
 			}
-			if err != io.EOF {
-				break
-			}
-			return
+			currentLine += splitSections[len(splitSections)-1]
+
 		}
-
-		currentChunk := string(buffer[:n])
-		splitSections := strings.Split(currentChunk, "\n")
-
-		for i := 0; i < len(splitSections)-1; i++ {
-			fmt.Printf("read: %s%s\n", currentLine, splitSections[i])
-			currentLine = ""
-		}
-		currentLine += splitSections[len(splitSections)-1]
-
-	}
+	}()
+	return lineChannel
 }
